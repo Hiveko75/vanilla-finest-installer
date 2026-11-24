@@ -33,7 +33,6 @@ From the [releases](https://github.com/Hiveko75/vanilla-finest-installer/release
   your PC": click *More info*, then *Run anyway*.
 - **macOS** (Intel and Apple Silicon): the `.dmg`. Drag the app to Applications; the first time,
   right-click it and choose *Open*.
-- **Linux:** the `.AppImage`. Make it executable and run it. The Flatpak launcher's folder is found too.
 
 The official Minecraft Launcher has to be installed and started once before.
 
@@ -48,12 +47,11 @@ the folder yourself if you don't need them.
 ## Building
 
 Builds run in GitHub Actions and are only started by hand: Actions → Build → Run workflow (the
-three files, kept 14 days as build artifacts, with a build provenance attestation:
+Windows and macOS files, kept 14 days as build artifacts, with a build provenance attestation:
 `gh attestation verify <file> -R Hiveko75/vanilla-finest-installer`). A release is made by hand
 too: Actions → Release → Run workflow.
 
-Locally: `pnpm install`, then `pnpm tauri dev` or `pnpm tauri build` (Rust, Node 22 and pnpm 10; on
-Linux the WebKitGTK 4.0 libraries, see the build workflow).
+Locally: `pnpm install`, then `pnpm tauri dev` or `pnpm tauri build` (Rust, Node 22 and pnpm 10).
 
 ## Code signing policy
 
