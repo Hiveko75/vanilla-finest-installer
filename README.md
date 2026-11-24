@@ -47,9 +47,10 @@ the folder yourself if you don't need them.
 
 ## Building
 
-Every push to `main` builds the three files in GitHub Actions (kept 14 days as build artifacts, with a
-build provenance attestation: `gh attestation verify <file> -R Hiveko75/vanilla-finest-installer`).
-A release is made by hand: Actions → Release → Run workflow.
+Builds run in GitHub Actions and are only started by hand: Actions → Build → Run workflow (the
+three files, kept 14 days as build artifacts, with a build provenance attestation:
+`gh attestation verify <file> -R Hiveko75/vanilla-finest-installer`). A release is made by hand
+too: Actions → Release → Run workflow.
 
 Locally: `pnpm install`, then `pnpm tauri dev` or `pnpm tauri build` (Rust, Node 22 and pnpm 10; on
 Linux the WebKitGTK 4.0 libraries, see the build workflow).

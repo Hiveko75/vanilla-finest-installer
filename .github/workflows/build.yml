@@ -1,12 +1,10 @@
 # Builds the installer for Windows (.exe), macOS (universal .dmg, Intel and Apple Silicon) and Linux
-# (.AppImage) on every push to main. The files are kept 14 days as build artifacts and get a build
+# (.AppImage) when started by hand. The files are kept 14 days as build artifacts and get a build
 # provenance attestation (check one with: gh attestation verify <file> -R Hiveko75/vanilla-finest-installer).
 name: Build
 
+# Only started by hand (Actions -> Build -> Run workflow): no automatic builds on push.
 on:
-  push:
-    branches: [main]
-  pull_request:
   workflow_dispatch:
 
 permissions:
