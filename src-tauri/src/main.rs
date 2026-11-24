@@ -15,7 +15,9 @@ fn main() {
             install_mrpack,
             get_installed_metadata,
             is_launcher_installed,
-            get_total_memory
+            get_total_memory,
+            remove_installation,
+            open_game_folder
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -63,6 +65,25 @@ async fn install_mrpack(
         let _ = handle.emit_all("install:progress", payload);
     };
     install::install(&request, &user_agent(&app_handle), &progress)
+        .await
+        .map_err(|e| format!("{e:#}"))
+}
+
+/// Removes an installation (see `install::uninstall`).
+#[tauri::command]
+async fn remove_installation(
+    profile_id: String,
+    game_dir: String,
+) -> Result<install::RemoveResult, String> {
+    install::uninstall(&profile_id, &game_dir)
+        .await
+        .map_err(|e| format!("{e:#}"))
+}
+
+/// Opens an installation's game folder (a folder name inside .minecraft) in the file manager.
+#[tauri::command]
+async fn open_game_folder(game_dir: String) -> Result<(), String> {
+    install::open_game_folder(&game_dir)
         .await
         .map_err(|e| format!("{e:#}"))
 }

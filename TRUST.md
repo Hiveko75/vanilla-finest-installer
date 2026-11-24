@@ -22,6 +22,17 @@
 1. It writes `vanilla-finest-installer.json` in the game folder: which files it installed, the hashes
    of the settings files it wrote, and the pack version.
 
+# How Remove works
+
+1. It removes the installation from `launcher_profiles.json`.
+1. It deletes every file `vanilla-finest-installer.json` lists (the downloaded files and the files
+   copied from the pack, including settings the player changed), Vanilla Finest Helper's settings
+   file, and `vanilla-finest-installer.json` itself. Files in `saves` are never deleted.
+1. It deletes Fabric's version folder in `versions` if no other installation in the launcher uses
+   that version.
+1. It deletes the folders left empty, and the game folder if nothing is left in it. Worlds,
+   screenshots, logs, `options.txt` and every other file the installer didn't write stay.
+
 # Trust & security
 
 - File paths in the pack are checked so nothing is written outside the game folder.

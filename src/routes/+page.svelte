@@ -4,7 +4,10 @@
 		get_total_memory,
 		install_mrpack,
 		is_launcher_installed,
-		type InstalledMetadata
+		open_game_folder,
+		remove_installation,
+		type InstalledMetadata,
+		type RemoveResult
 	} from '$lib/installer';
 	import { get_project, list_versions, PROJECT_ID, PROJECT_URL } from '$lib/modrinth';
 	import {
@@ -171,6 +174,7 @@
 			await appWindow.requestUserAttention(UserAttentionType.Informational);
 		} catch (e) {
 			state = 'error';
+			errorKey = 'ui.install-error';
 			errorMessage = String(e);
 			console.error(e);
 		} finally {
@@ -179,12 +183,55 @@
 		}
 	}
 
-	let state: 'preInstall' | 'installing' | 'postInstall' | 'error' | 'noLauncher' = 'preInstall';
+	// Remove: the launcher installation and the files the installer wrote; worlds and the player's
+	// own files stay.
+	let removeResult: RemoveResult | undefined = undefined;
+	async function removeInstall() {
+		if (!choice || !installed) return;
+		const folder = name;
+		const profileId = installId(edition, choice.mcVersion);
+		const ok = await confirm($trans('ui.remove-confirm', { name: folder }), {
+			title: $trans('ui.remove-title', { name: folder }),
+			type: 'warning',
+			okLabel: $trans('ui.remove-button'),
+			cancelLabel: $trans('ui.cancel')
+		});
+		if (!ok) return;
+		state = 'removing';
+		installedName = folder;
+		try {
+			removeResult = await remove_installation(profileId, folder);
+			state = 'postRemove';
+		} catch (e) {
+			state = 'error';
+			errorKey = 'ui.remove-error';
+			errorMessage = String(e);
+			console.error(e);
+		}
+	}
+
+	async function openFolder() {
+		try {
+			await open_game_folder(installedName);
+		} catch (e) {
+			console.error(e);
+		}
+	}
+
+	let state:
+		| 'preInstall'
+		| 'installing'
+		| 'postInstall'
+		| 'removing'
+		| 'postRemove'
+		| 'error'
+		| 'noLauncher' = 'preInstall';
 	let installProgress = '';
 	let installedName = '';
 	$: totalSteps = totalMods + 4;
 	let currentStep = 0;
 	let errorMessage: string | undefined = undefined;
+	let errorKey: 'ui.install-error' | 'ui.remove-error' = 'ui.install-error';
 
 	const theme_icon_map = {
 		'device-theme': DeviceThemeIcon,
@@ -251,9 +298,9 @@
 	</button>
 </div>
 
-<div class="flex items-center justify-center w-full h-full bg-base text-text">
+<div class="flex items-center justify-center w-full min-h-full py-16 bg-base text-text">
 	<div class="flex flex-col gap-4 w-[28rem] max-w-[90vw]">
-		<img src="/vanilla-finest-logo.png" alt="Vanilla Finest" class="w-full" draggable="false" />
+		<img src="/vanilla-finest-logo.png" alt="Vanilla Finest" class="w-4/5 self-center" draggable="false" />
 		{#if state == 'preInstall'}
 			{#if loadError}
 				<div class="text-center text-red">{$trans('ui.load-error', { errorMessage: loadError })}</div>
@@ -335,6 +382,12 @@
 			<button class={buttonClass} on:click={installPack} disabled={!choice}
 				>{installed?.pack_version ? $trans('ui.update-button') : $trans('ui.install-button')}</button
 			>
+			{#if choice && installed}
+				<button
+					class="self-center text-sm text-subtext0 underline hover:text-text rounded focus:outline-none focus-visible:outline-2 focus-visible:outline-blue"
+					on:click={removeInstall}>{$trans('ui.remove-link', { name })}</button
+				>
+			{/if}
 		{:else if state == 'installing'}
 			<div class="text-center text-lg">{$trans('ui.installing', { name: installedName })}</div>
 			<progress class="progress w-full" value={currentStep / totalSteps} />
@@ -344,9 +397,20 @@
 		{:else if state == 'postInstall'}
 			<div class="text-center text-lg">{$trans('ui.installed', { name: installedName })}</div>
 			<button class={buttonClass} on:click={reset_state}>{$trans('ui.back-home')}</button>
+		{:else if state == 'removing'}
+			<div class="text-center text-lg">{$trans('ui.removing', { name: installedName })}</div>
+		{:else if state == 'postRemove'}
+			<div class="text-center text-lg">{$trans('ui.removed', { name: installedName })}</div>
+			{#if removeResult && !removeResult.folderRemoved}
+				<div class="text-center text-sm text-subtext0">
+					{$trans('ui.removed-kept', { folder: installedName })}
+				</div>
+				<button class={buttonClass} on:click={openFolder}>{$trans('ui.open-folder')}</button>
+			{/if}
+			<button class={buttonClass} on:click={reset_state}>{$trans('ui.back-home')}</button>
 		{:else if state == 'error'}
 			<div class="text-center text-lg text-red">
-				{$trans('ui.install-error', { errorMessage })}
+				{$trans(errorKey, { errorMessage })}
 			</div>
 			<button class={buttonClass} on:click={reset_state}>{$trans('ui.back-home')}</button>
 		{:else if state == 'noLauncher'}

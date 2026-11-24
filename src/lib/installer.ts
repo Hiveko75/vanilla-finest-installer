@@ -50,3 +50,20 @@ export async function is_launcher_installed(): Promise<boolean> {
 export async function get_total_memory(): Promise<number> {
 	return await invoke('get_total_memory');
 }
+
+export interface RemoveResult {
+	/** The game folder. */
+	folder: string;
+	/** False when worlds, screenshots or other files the installer didn't write are still in it. */
+	folderRemoved: boolean;
+}
+
+/** Removes the launcher installation and the files the installer wrote. */
+export async function remove_installation(profileId: string, gameDir: string): Promise<RemoveResult> {
+	return await invoke('remove_installation', { profileId, gameDir });
+}
+
+/** Opens a game folder (inside .minecraft) in the file manager. */
+export async function open_game_folder(gameDir: string): Promise<void> {
+	await invoke('open_game_folder', { gameDir });
+}

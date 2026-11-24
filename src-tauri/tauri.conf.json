@@ -72,7 +72,7 @@
         "resizable": true,
         "title": "Vanilla Finest Installer",
         "width": 640,
-        "height": 480,
+        "height": 540,
         "minWidth": 480,
         "minHeight": 400
       }

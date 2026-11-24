@@ -56,8 +56,21 @@ pub struct InstallMeta {
     /// content differs from this was changed by the player and is kept on updates.
     #[serde(default)]
     pub overrides: BTreeMap<String, String>,
+    /// The launcher version the installation starts, e.g. "fabric-loader-0.17.3-26.3".
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub launcher_version: Option<String>,
     #[serde(default)]
     pub metadata: serde_json::Value,
+}
+
+/// What Remove did, for the window.
+#[derive(Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct RemoveResult {
+    /// The game folder.
+    pub folder: String,
+    /// False when files the installer didn't write (worlds, screenshots, logs, ...) are still in it.
+    pub folder_removed: bool,
 }
 
 /// Progress for the window: (step, "start"/"complete", ...).
@@ -596,11 +609,123 @@ pub async fn install(
     let meta = InstallMeta {
         files: written_files,
         overrides,
+        launcher_version: Some(version_id.clone()),
         metadata: req.metadata.clone(),
     };
     tokio::fs::write(game_dir.join(META_FILE), serde_json::to_string_pretty(&meta)?)
         .await
         .context("Failed to write installer metadata")?;
     progress(serde_json::json!(["add_profile", "complete"]));
+    Ok(())
+}
+
+/// Removes an installation: the launcher installation, every file the installer wrote into the game
+/// folder (mods, packs, shaders and the pack's settings files), Fabric's version folder when no other
+/// installation starts it, and the folders left empty. Worlds, screenshots and every other file the
+/// installer didn't write stay; the game folder itself goes only when nothing is left in it.
+pub async fn uninstall(profile_id: &str, game_dir_name: &str) -> anyhow::Result<RemoveResult> {
+    let launcher = launcher_path().await.context("Could not find the Minecraft Launcher's folder")?;
+    let game_dir = game_dir_path(game_dir_name).await?;
+    let meta = read_meta(&game_dir).await.unwrap_or_default();
+    let mut launcher_version = meta.launcher_version.clone();
+
+    // 1. The launcher installation.
+    let profiles_path = launcher.join("launcher_profiles.json");
+    let mut version_still_used = false;
+    if let Ok(text) = tokio::fs::read_to_string(&profiles_path).await {
+        let mut json: serde_json::Value =
+            serde_json::from_str(&text).context("Failed to parse launcher profiles")?;
+        if let Some(profiles) = json.get_mut("profiles").and_then(|p| p.as_object_mut()) {
+            let removed = profiles.remove(profile_id);
+            if launcher_version.is_none() {
+                launcher_version = removed
+                    .as_ref()
+                    .and_then(|p| p.get("lastVersionId"))
+                    .and_then(|v| v.as_str())
+                    .map(str::to_owned);
+            }
+            if let Some(v) = &launcher_version {
+                version_still_used = profiles
+                    .values()
+                    .any(|p| p.get("lastVersionId").and_then(|x| x.as_str()) == Some(v.as_str()));
+            }
+            if removed.is_some() {
+                tokio::fs::write(&profiles_path, serde_json::to_string_pretty(&json)?)
+                    .await
+                    .context("Failed to write launcher profiles")?;
+            }
+        }
+    }
+
+    // 2. The files the installer wrote. Worlds are never touched.
+    for k in meta.files.iter().chain(meta.overrides.keys()) {
+        if k.starts_with("saves/") {
+            continue;
+        }
+        if let Some(rel) = parse_and_sanitize_path(k) {
+            let _ = tokio::fs::remove_file(game_dir.join(rel)).await;
+        }
+    }
+    let _ = tokio::fs::remove_file(game_dir.join(META_FILE)).await;
+    // Vanilla Finest Helper's settings (the installer wrote them on the first install; the mods that
+    // used them are gone now).
+    let _ = tokio::fs::remove_file(game_dir.join("config").join("vanilla-finest-helper.properties")).await;
+
+    // 3. Fabric's (or Quilt's) version folder, unless another installation starts that version.
+    if let Some(v) = launcher_version {
+        let loader = v.starts_with("fabric-loader-") || v.starts_with("quilt-loader-");
+        if loader && !version_still_used {
+            if let Some(name) = parse_and_sanitize_path(&v).filter(|p| p.components().count() == 1) {
+                let _ = tokio::fs::remove_dir_all(launcher.join("versions").join(name)).await;
+            }
+        }
+    }
+
+    // 4. Folders left empty, and the game folder when it is empty.
+    let dir = game_dir.clone();
+    let folder_removed = tokio::task::spawn_blocking(move || {
+        remove_empty_dirs(&dir);
+        !dir.exists()
+    })
+    .await
+    .unwrap_or(false);
+    Ok(RemoveResult {
+        folder: game_dir.to_string_lossy().into_owned(),
+        folder_removed,
+    })
+}
+
+/// Removes the empty folders under `dir`, then `dir` itself if it ended up empty. Symbolic links are
+/// not followed.
+fn remove_empty_dirs(dir: &Path) -> bool {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return false;
+    };
+    let mut empty = true;
+    for entry in entries.flatten() {
+        let is_dir = entry.file_type().map(|t| t.is_dir()).unwrap_or(false);
+        if !(is_dir && remove_empty_dirs(&entry.path())) {
+            empty = false;
+        }
+    }
+    empty && std::fs::remove_dir(dir).is_ok()
+}
+
+/// Opens the game folder in the system's file manager.
+pub async fn open_game_folder(game_dir_name: &str) -> anyhow::Result<()> {
+    let dir = game_dir_path(game_dir_name).await?;
+    if !dir.is_dir() {
+        return Err(anyhow!("{} does not exist", dir.to_string_lossy()));
+    }
+    #[cfg(target_os = "windows")]
+    let program = "explorer";
+    #[cfg(target_os = "macos")]
+    let program = "open";
+    #[cfg(all(unix, not(target_os = "macos")))]
+    let program = "xdg-open";
+    std::process::Command::new(program)
+        .arg(&dir)
+        .spawn()
+        .with_context(|| format!("Could not open {}", dir.to_string_lossy()))?;
     Ok(())
 }

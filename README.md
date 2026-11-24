@@ -37,6 +37,14 @@ From the [releases](https://github.com/Hiveko75/vanilla-finest-installer/release
 
 The official Minecraft Launcher has to be installed and started once before.
 
+## Removing
+
+Open the installer, pick the edition and the Minecraft version, and click **Remove Vanilla Finest …**
+under the Update button. It removes the installation from the Minecraft Launcher, the mods, packs and
+settings files it installed, and Fabric's version folder if no other installation uses it. Worlds,
+screenshots and the other files the game made stay in the folder (*Open the folder* shows it); delete
+the folder yourself if you don't need them.
+
 ## Building
 
 Every push to `main` builds the three files in GitHub Actions (kept 14 days as build artifacts, with a
@@ -46,7 +54,38 @@ A release is made by hand: Actions → Release → Run workflow.
 Locally: `pnpm install`, then `pnpm tauri dev` or `pnpm tauri build` (Rust, Node 22 and pnpm 10; on
 Linux the WebKitGTK 4.0 libraries, see the build workflow).
 
+## Code signing policy
+
+The Windows installer is to be signed through SignPath Foundation (applied for; until the project is
+accepted, releases are unsigned):
+
+Free code signing provided by [SignPath.io](https://about.signpath.io/), certificate by
+[SignPath Foundation](https://signpath.org/).
+
+- Only the installer built from this repository by the Release workflow on GitHub's own runners is
+  signed. Nothing built anywhere else is signed, and neither are the files the installer downloads
+  (the modpack, its mods and packs).
+- Team roles:
+  - Committers and reviewers: [Hiveko](https://github.com/Hiveko75)
+  - Approvers: [Hiveko](https://github.com/Hiveko75)
+- Every signing request is approved by hand. Changes from other people come as pull requests and are
+  reviewed before they are merged. Everyone in these roles uses two-factor authentication on GitHub
+  and SignPath.
+
+## Privacy
+
+This program will not transfer any information to other networked systems unless specifically
+requested by the user or the person installing or operating it. It collects nothing about you or
+your computer. It only connects to:
+
+- `api.modrinth.com`, for the list of Vanilla Finest versions and the project icon;
+- the hosts the pack downloads from (`cdn.modrinth.com`, `github.com`, `raw.githubusercontent.com`,
+  `gitlab.com`), for the pack and its files;
+- `meta.fabricmc.net`, for Fabric's version file.
+
+Its requests carry the user agent `VanillaFinestInstaller/<version>`. On your computer it only changes
+the files listed in [TRUST.md](TRUST.md).
+
 ## Licence
 
-MIT, see [LICENSE](LICENSE). This program does not send any information anywhere except the
-downloads it needs (Modrinth, GitHub, Fabric's metadata server).
+MIT, see [LICENSE](LICENSE).

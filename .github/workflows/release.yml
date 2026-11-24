@@ -1,6 +1,12 @@
 # Builds the installer for Windows, macOS and Linux and publishes the files as a GitHub release.
 # Run by hand only: Actions -> Release -> Run workflow (the tag defaults to the version in
 # src-tauri/tauri.conf.json, e.g. 1.0.0).
+#
+# Windows signing (SignPath Foundation, free code signing for open source) switches on when the
+# repository variable SIGNPATH_ORGANIZATION_ID and the secret SIGNPATH_API_TOKEN exist; without them
+# the release is unsigned. Optional variables: SIGNPATH_PROJECT_SLUG (default vanilla-finest-installer)
+# and SIGNPATH_POLICY_SLUG (default release-signing). The run then waits until the signing request is
+# approved on SignPath.
 name: Release
 
 on:
@@ -12,6 +18,7 @@ on:
         default: ''
 
 permissions:
+  actions: read
   contents: write
   id-token: write
   attestations: write
@@ -61,10 +68,37 @@ jobs:
         uses: actions/attest@v4
         with:
           subject-path: ${{ matrix.files }}
+      # Windows: the unsigned .exe goes to SignPath, which signs it once the request is approved there
+      - name: Upload for signing
+        id: unsigned
+        if: matrix.artifact == 'windows' && vars.SIGNPATH_ORGANIZATION_ID != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-windows
+          path: ${{ matrix.files }}
+          if-no-files-found: error
+          retention-days: 14
+      - name: Sign (SignPath)
+        if: steps.unsigned.outcome == 'success'
+        uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG || 'vanilla-finest-installer' }}
+          signing-policy-slug: ${{ vars.SIGNPATH_POLICY_SLUG || 'release-signing' }}
+          github-artifact-id: ${{ steps.unsigned.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 3600
+          output-artifact-directory: signed
+      - name: Attest build provenance (signed)
+        if: steps.unsigned.outcome == 'success'
+        uses: actions/attest@v4
+        with:
+          subject-path: signed/*.exe
       - uses: actions/upload-artifact@v4
         with:
           name: release-${{ matrix.artifact }}
-          path: ${{ matrix.files }}
+          path: ${{ steps.unsigned.outcome == 'success' && 'signed/*.exe' || matrix.files }}
           if-no-files-found: error
           retention-days: 14
 
@@ -95,6 +129,11 @@ jobs:
             esac
           done
           ls -l
+          if [ -n "${{ vars.SIGNPATH_ORGANIZATION_ID }}" ]; then
+            WINDOWS="Windows: run the .exe (signed by SignPath Foundation)."
+          else
+            WINDOWS="Windows: run the .exe (not code-signed yet, so Windows may warn about an unknown publisher: More info -> Run anyway)."
+          fi
           gh release create "$TAG" * --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
             --title "Vanilla Finest Installer $TAG" \
-            --notes "Installs Vanilla Finest into the official Minecraft Launcher. Windows: run the .exe (Windows may warn about an unknown publisher: More info -> Run anyway). macOS: open the .dmg, drag the app to Applications, then right-click -> Open the first time. Linux: make the .AppImage executable and run it."
+            --notes "Installs Vanilla Finest into the official Minecraft Launcher. $WINDOWS macOS: open the .dmg, drag the app to Applications, then right-click -> Open the first time. Linux: make the .AppImage executable and run it."

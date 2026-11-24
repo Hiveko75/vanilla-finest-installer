@@ -29,5 +29,15 @@
 	"ui.no-launcher": "The official Minecraft Launcher was not found. Install it, or start it once, then try again.",
 	"ui.no-launcher-back": "Back",
 	"ui.no-launcher-continue": "Install anyway",
-	"ui.back-home": "Back"
+	"ui.back-home": "Back",
+	"ui.remove-link": "Remove {{name}}…",
+	"ui.remove-title": "Remove {{name}}",
+	"ui.remove-confirm": "Remove “{{name}}” from the Minecraft Launcher? Its mods, packs and settings are deleted. Worlds, screenshots and the files you added stay in the folder.",
+	"ui.remove-button": "Remove",
+	"ui.cancel": "Cancel",
+	"ui.removing": "Removing {{name}}...",
+	"ui.removed": "{{name}} was removed from the Minecraft Launcher.",
+	"ui.removed-kept": "Your worlds and the other files the game made are still in .minecraft/{{folder}}. Delete the folder yourself if you don't need them.",
+	"ui.open-folder": "Open the folder",
+	"ui.remove-error": "Something went wrong while removing: {{errorMessage}}"
 }
