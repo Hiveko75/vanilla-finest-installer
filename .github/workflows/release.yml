@@ -1,0 +1,100 @@
+# Builds the installer for Windows, macOS and Linux and publishes the files as a GitHub release.
+# Run by hand only: Actions -> Release -> Run workflow (the tag defaults to the version in
+# src-tauri/tauri.conf.json, e.g. 1.0.0).
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (empty = the version in src-tauri/tauri.conf.json)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - platform: windows-2025
+            artifact: windows
+            args: ''
+            files: src-tauri/target/release/*.exe
+          - platform: macos-latest
+            artifact: macos
+            args: '--target universal-apple-darwin'
+            files: src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
+          - platform: ubuntu-22.04
+            artifact: linux
+            args: ''
+            files: src-tauri/target/release/bundle/appimage/*.AppImage
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+      - name: Linux libraries
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libappindicator3-dev librsvg2-dev patchelf
+      - run: pnpm install --frozen-lockfile
+      - name: Build
+        run: pnpm tauri build --ci ${{ matrix.args }}
+      - name: Attest build provenance
+        uses: actions/attest@v4
+        with:
+          subject-path: ${{ matrix.files }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.artifact }}
+          path: ${{ matrix.files }}
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: dist
+          merge-multiple: true
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(python3 -c 'import json; print(json.load(open("src-tauri/tauri.conf.json"))["package"]["version"])')
+          TAG="${{ inputs.tag }}"
+          [ -n "$TAG" ] || TAG="$VERSION"
+          cd dist
+          # file names with the version, as players download them
+          for f in *; do
+            case "$f" in
+              *.exe) mv "$f" "Vanilla-Finest-Installer-$TAG-Windows.exe" ;;
+              *.dmg) mv "$f" "Vanilla-Finest-Installer-$TAG-macOS.dmg" ;;
+              *.AppImage) mv "$f" "Vanilla-Finest-Installer-$TAG-Linux.AppImage" ;;
+            esac
+          done
+          ls -l
+          gh release create "$TAG" * --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title "Vanilla Finest Installer $TAG" \
+            --notes "Installs Vanilla Finest into the official Minecraft Launcher. Windows: run the .exe (Windows may warn about an unknown publisher: More info -> Run anyway). macOS: open the .dmg, drag the app to Applications, then right-click -> Open the first time. Linux: make the .AppImage executable and run it."

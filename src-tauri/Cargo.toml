@@ -1,10 +1,10 @@
 [package]
-name = "paigaldaja"
-version = "1.1.0"
-description = "A whitelabel .mrpack installer"
-authors = ["Skye"]
+name = "vanilla-finest-installer"
+version = "1.0.0"
+description = "Installs the Vanilla Finest modpacks into the official Minecraft Launcher (based on Fabulously Optimized's installer)"
+authors = ["Skye", "Hiveko"]
 license = "MIT"
-repository = ""
+repository = "https://github.com/Hiveko75/vanilla-finest-installer"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -15,7 +15,7 @@ tauri-build = { version = "1.3.0", features = [] }
 [dependencies]
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
-tauri = { version = "1.3.0", features = [ "window-request-user-attention", "shell-open", "dialog-confirm", "http-api", "window-close", "process-command-api"] }
+tauri = { version = "1.3.0", features = [ "window-request-user-attention", "shell-open", "dialog-confirm", "window-close"] }
 zip = { version = "2.2.0", default-features = false, features = ["aes-crypto", "deflate", "deflate64", "lzma", "bzip2", "zstd", "time"] }
 tokio = { version = "1", features = [ "fs" ] }
 sha2 = "0.10.8"
@@ -23,7 +23,7 @@ hex = "0.4.3"
 time = { version = "0.3.36", features = [ "formatting" ] }
 anyhow = "1.0.71"
 reqwest = "0.11.24"
-tempfile = "3.10.1"
+sysinfo = { version = "0.30", default-features = false }
 
 [features]
 # by default Tauri runs in production mode

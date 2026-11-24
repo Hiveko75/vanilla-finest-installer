@@ -6,8 +6,8 @@
     "distDir": "../build"
   },
   "package": {
-    "productName": "Fabulously Optimized Installer",
-    "version": "1.1.0"
+    "productName": "Vanilla Finest Installer",
+    "version": "1.0.0"
   },
   "tauri": {
     "allowlist": {
@@ -22,19 +22,16 @@
         "confirm": true
       },
       "shell": {
-        "open": "^https://wiki.download.fo/"
+        "open": "^https://modrinth\\.com/"
       }
     },
     "bundle": {
       "active": true,
       "category": "Game",
-      "copyright": "",
+      "copyright": "Hiveko; based on Fabulously Optimized Installer by Skye (MIT)",
       "deb": {
         "depends": []
       },
-      "externalBin": [
-        "../verifier/dist/verifier"
-      ],
       "icon": [
         "icons/32x32.png",
         "icons/128x128.png",
@@ -42,7 +39,7 @@
         "icons/icon.icns",
         "icons/icon.ico"
       ],
-      "identifier": "vg.skye.paigaldaja",
+      "identifier": "io.github.hiveko75.vanillafinest.installer",
       "longDescription": "",
       "macOS": {
         "entitlements": null,
@@ -52,8 +49,11 @@
         "signingIdentity": null
       },
       "resources": [],
-      "shortDescription": "",
-      "targets": ["appimage", "dmg"],
+      "shortDescription": "Installs Vanilla Finest into the Minecraft Launcher",
+      "targets": [
+        "appimage",
+        "dmg"
+      ],
       "windows": {
         "certificateThumbprint": null,
         "digestAlgorithm": "sha256",
@@ -70,11 +70,11 @@
       {
         "fullscreen": false,
         "resizable": true,
-        "title": "Fabulously Optimized Installer",
-        "width": 600,
-        "height": 300,
-        "minWidth": 224,
-        "minHeight": 224
+        "title": "Vanilla Finest Installer",
+        "width": 640,
+        "height": 480,
+        "minWidth": 480,
+        "minHeight": 400
       }
     ]
   }
