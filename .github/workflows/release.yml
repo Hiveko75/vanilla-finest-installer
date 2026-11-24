@@ -46,8 +46,10 @@ jobs:
         with:
           node-version: '22'
           cache: 'pnpm'
-      - uses: dtolnay/rust-toolchain@stable
+      # Rust 1.97: newer compilers fail to build wry 0.24 (Tauri 1) for Linux (WebKitGTK settings methods not found)
+      - uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: '1.97.0'
           targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
       - name: Linux libraries
         if: matrix.platform == 'ubuntu-22.04'
